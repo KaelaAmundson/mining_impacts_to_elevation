@@ -289,3 +289,4 @@ ggplot(mined_table, aes(x=dem_values, color=type)) +
 
 ```
 
+## completed on October 4, 2019
