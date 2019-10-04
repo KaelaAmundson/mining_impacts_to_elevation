@@ -3,6 +3,8 @@ title: "Topographic Change caused by People"
 author: "Matthew Ross"
 date: "9/23/2019"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 
@@ -74,7 +76,6 @@ mapview(az_mine)
 ```
 
 
-
 ## Getting our own elevation datasets
 
 ### Download pre-mining DEM 
@@ -82,7 +83,7 @@ mapview(az_mine)
 ```{r}
 
 #Check projection of az_mine
-#st_crs(az_mine)
+st_crs(az_mine)
 
 az_raster_before <- get_elev_raster(az_mine,z=12)
 
@@ -162,6 +163,7 @@ dem_diff <- az_raster_before_trim - az_raster_after_clip
 
 plot(dem_diff)
 
+mapview(dem_diff)
 ```
 
 
@@ -173,15 +175,18 @@ You may want to check out the command maxValue and minValue
 
 ```{r}
 
-#YOUR CODE HERE
+maxValue(dem_diff)
+
+minValue(dem_diff)
 ```
+# The max elevation change caused by mining is 38.48267 and the min elevation change caused by mining is -73 --> which doesnt really make sense?
 
 
 ## 2) What is the background elevation "error" between NED and SRTM? 
 
 The national elevation dataset (NED) and the Shuttle 
 Radar Topography Mission are extremely different ways to
-estimate elevatino. NED is derived from thousands of 
+estimate elevation. NED is derived from thousands of 
 compiled elevation datasets that can be collected on the
 ground, from LiDAR or other ways, while SRTM is collected
 with radar from space. As a result, we naturally expect
@@ -194,69 +199,82 @@ elevation change?
 
 ```{r}
 
-#Your code here
+buffered_az <- sf::st_buffer(az_mine, 5000)
 
-
+mapview(buffered_az)
 ```
 
 
-### 2b) Use the the st_transform command to transform the 
-projection of your buffered az_mine dataset to the 
-same projection as the dem_diff raster dataset
+### 2b) Use the the st_transform command to transform the projection of your buffered az_mine dataset to the same projection as the dem_diff raster dataset
 
 hint: you may want to explore st_crs to help you here
 
 ```{r}
 
+az_mine_reproj <- st_transform(buffered_az, st_crs(dem_diff))
+
+mapview(az_mine_reproj)
+
 ```
 
 
-### 2c) Use the raster::mask command to mask out all the 
-areas inside of the buffered and reprojected az_mine dataset.
+### 2c) Use the raster::mask command to mask out all the areas inside of the buffered and reprojected az_mine dataset.
 
 hint: look at the mask command and try to understand what
 the inverse option does
 
 ```{r}
-#Your code here
+
+# ?raster::mask
+
+mine_reproj <- raster::mask(dem_diff, az_mine_reproj, inverse=TRUE)
+
+mapview(mine_reproj)
 ```
 
 
-### 2d) Use the summary command to look at the summary of
-differences between these two DEMs in areas where there has
-been no mining
+### 2d) Use the summary command to look at the summary of differences between these two DEMs in areas where there has been no mining
+
+```{r}
+
+summary(mine_reproj)
+
+```
 
 
-## 3) What does the shape of the "error" distribution look like
-in areas that have not been mined versus areas that have
-been mined? 
+## 3) What does the shape of the "error" distribution look like in areas that have not been mined versus areas that have been mined? 
 
 To look at distributional changes, we may want to convert this
 raster dataset back into a data.frame or tibble type shape so 
 that we can take advantage of ggplots plotting capabilities and 
 make a plot of the two dems.
 
-### 3a) Mask the raster dem_diff dataset to the exact outlines of the
-USGS az_mine dataset
+### 3a) Mask the raster dem_diff dataset to the exact outlines of the USGS az_mine dataset
 
 ```{r}
+
+az_mine_original <- st_transform(az_mine, st_crs(dem_diff))
+
+az_mine_original_mask <- raster::mask(dem_diff, az_mine_original, inverse=FALSE)
+
+mapview(az_mine_original_mask)
+```
+
+
+### 3b) Use the getValues command to extract the elevation values from both the unmined and mined regions of your rasters. Label these vectors as `unmined_dem` and `mined_dem`. 
+
+```{r}
+# ?getValues
+
+mined_dem <- getValues(az_mine_original_mask)
+
+unmined_dem <- getValues(mine_reproj)
+
 
 ```
 
 
-### 3b) Use the getValues command to extract the elevation
-values from both the unmined and mined regions of your rasters. 
-Label these vectors as `unmined_dem` and `mined_dem`. 
-
-```{r}
-
-
-
-```
-
-
-### 3c) Use ggplot and the command geom_density() to look at
-the differences in mined and unmined regions of Arizona.
+### 3c) Use ggplot and the command geom_density() to look at the differences in mined and unmined regions of Arizona.
 
 ```{r}
 # Here I'm just making the table for you
@@ -265,7 +283,9 @@ unmined_type <- rep('unmined',length(unmined_dem))
 mined_type <- rep('mined',length(mined_dem))
 mined_table <- tibble(dem_values = c(unmined_dem,mined_dem),
                       type = c(unmined_type,mined_type)) 
-                      
-                    
+
+ggplot(mined_table, aes(x=dem_values, color=type)) +
+  geom_density()
+
 ```
 
