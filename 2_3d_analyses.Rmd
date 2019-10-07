@@ -3,6 +3,8 @@ title: "Terrain analyses and rayshader for 3d plots"
 author: "Matthew Ross"
 date: "9/25/2019"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 
@@ -175,6 +177,10 @@ All data for this section should be the data clipped to the mining area
 
 ```{r}
 
+mine_after_same_slope <- terrain(mine_after_same, opt='slope', unit='degrees')
+
+plot(mine_after_same_slope)
+
 ```
 
 
@@ -182,12 +188,31 @@ All data for this section should be the data clipped to the mining area
 
 ```{r}
 
+mine_before_same_slope <- terrain(mine_before_same, opt='slope', unit='degrees')
+
+mines_slope <- brick(mine_before_same_slope,mine_after_same_slope)
+
+mines_slope[[3]] <- mines[[1]] - mines[[2]]
+
+names(mines_slope) <- c('Pre_mining_slope','Post_mining_slope','DoS')
+
+plot(mines_slope)
+
 ```
 
 
 ## 3) Use rayshader to make a 3d plot of the pre-mining mine
 
-```{r}
+```{r, echo= TRUE}
+
+mine_before_same_slope %>%
+  sphere_shade(texture = 'desert') %>%
+  add_water(detect_water(mine_before_same_slope),color='desert') %>%
+  add_shadow(ray_shade(mine_before_same_slope,zscale=2),0.5) %>%
+  add_shadow(ambient_shade(mine_before_same_slope)) %>%
+  plot_3d(mine_before_same_slope, heightmap=20,20, zscale=10,fov = 0,theta=135,zoom=0.75)
+
+# ?plot_3d
 
 ```
 
@@ -195,6 +220,13 @@ All data for this section should be the data clipped to the mining area
 ## 4) Use rayshader to make 3d plot of the post-mining mine
 
 ```{r}
+
+mine_after_same_slope %>%
+  sphere_shade(texture = 'desert') %>%
+  add_water(detect_water(mine_after_same_slope),color='desert') %>%
+  add_shadow(ray_shade(mine_after_same_slope,zscale=2),0.5) %>%
+  add_shadow(ambient_shade(mine_after_same_slope)) %>%
+  plot_3d(mine_after_same_slope, heightmap=4, zscale=10,fov = 0,theta=135,zoom=0.75)
 
 ```
 
